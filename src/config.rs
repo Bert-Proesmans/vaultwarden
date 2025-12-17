@@ -793,6 +793,9 @@ make_config! {
         /// Prefer IPv6 (AAAA) resolving |> This settings configures the DNS resolver to resolve IPv6 first, and if not available try IPv4
         /// This could be useful in IPv6 only environments.
         dns_prefer_ipv6: bool, true, def, false;
+
+        /// Set a custom rp_id for webauthn keys |> More info here; https://github.com/dani-garcia/vaultwarden/discussions/6567
+        webauth_domain: String, true, auto, |c| extract_webauthn_rp_id(&c.domain);
     },
 
     /// OpenID Connect SSO settings
@@ -1304,6 +1307,23 @@ fn extract_url_origin(url: &str) -> String {
         Ok(u) => u.origin().ascii_serialization(),
         Err(e) => {
             println!("Error validating domain: {e}");
+            String::new()
+        }
+    }
+}
+
+fn extract_webauthn_rp_id(domain: &str) -> String {
+    let origin = match Url::parse(domain) {
+        Ok(u) => u.origin().ascii_serialization(),
+        Err(e) => {
+            println!("Error validating domain: {e}");
+            String::new()
+        }
+    };
+    match Url::parse(&origin) {
+        Ok(u) => u.domain().unwrap_or("").to_string(),
+        Err(e) => {
+            println!("Error validating origin: {e}");
             String::new()
         }
     }

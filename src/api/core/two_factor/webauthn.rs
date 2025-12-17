@@ -30,13 +30,15 @@ use webauthn_rs_proto::{
 };
 
 static WEBAUTHN: LazyLock<Webauthn> = LazyLock::new(|| {
-    let domain = CONFIG.domain();
+    let domain = Url::parse(&CONFIG.domain()).map(|u| u.domain().map(str::to_owned)).ok().flatten().unwrap_or_default();
     let domain_origin = CONFIG.domain_origin();
-    let rp_id = Url::parse(&domain).map(|u| u.domain().map(str::to_owned)).ok().flatten().unwrap_or_default();
+    let rp_id = CONFIG.webauth_domain();
     let rp_origin = Url::parse(&domain_origin).unwrap();
 
     let webauthn = WebauthnBuilder::new(&rp_id, &rp_origin)
         .expect("Creating WebauthnBuilder failed")
+        // Vault is very likely running on custom subdomain(s) if the admin set a custom rp_id
+        .allow_subdomains(rp_id != domain)
         .rp_name(&domain)
         .timeout(Duration::from_millis(60000));
 
